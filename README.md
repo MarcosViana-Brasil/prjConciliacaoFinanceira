@@ -29,6 +29,21 @@ Depois suba todos os servicos:
 docker compose up -d
 ```
 
+Ou use o script de subida completa no Windows:
+
+```powershell
+.\scripts\start-system.ps1
+```
+
+Atalhos uteis:
+
+```powershell
+.\scripts\start-system.ps1 -SkipSeed
+.\scripts\start-system.ps1 -NoBuild
+```
+
+O script cria `.env` se estiver ausente, sobe Postgres/PgAdmin, aplica migrations, executa seed inicial e deixa backend/frontend disponiveis.
+
 ## Acessos
 
 - Frontend: http://localhost:3100
@@ -109,6 +124,12 @@ Todas as respostas seguem o envelope padrao `{ success, data, message }` ou `{ s
 - `PATCH /api/financial-titles/:id/restore` - restaura titulo excluido logicamente.
 - `DELETE /api/financial-titles/:id` - soft delete de titulo financeiro.
 - `POST /api/financial-titles/import` - importa titulos em lote com idempotencia por `externalId` ou `titleNumber`.
+- `POST /api/gateways/rede/import-transactions` - importa transacoes Rede, salva payload bruto, log tecnico e normaliza dados.
+- `POST /api/gateways/rede/import-receivables` - importa recebiveis Rede, salva payload bruto, log tecnico e normaliza dados.
+- `GET /api/gateways/rede/transactions` - lista transacoes Rede com filtros e paginacao.
+- `GET /api/gateways/rede/transactions/:id` - busca transacao Rede por ID.
+- `GET /api/gateways/rede/receivables` - lista recebiveis Rede com filtros e paginacao.
+- `GET /api/gateways/rede/receivables/:id` - busca recebivel Rede por ID.
 - `GET /api/audit-events` - lista auditoria com filtros por entidade, acao, usuario e periodo.
 - `GET /api/audit-events/:entity/:entityId` - lista auditoria de uma entidade.
 - `GET /api/payloads` - lista payloads brutos com filtros por provider, status, endpoint e periodo.
@@ -163,6 +184,17 @@ Exemplo de importacao em lote:
   "justification": "Importacao inicial de titulos do ERP"
 }
 ```
+
+Exemplo de importacao mockada da Rede:
+
+```json
+{
+  "startDate": "2026-07-01",
+  "endDate": "2026-07-03"
+}
+```
+
+Por padrao, o modulo Rede usa mocks controlados (`REDE_USE_MOCKS=true`). Para usar endpoints reais ou homologacao contratada, configure `REDE_BASE_URL`, `REDE_TRANSACTIONS_ENDPOINT`, `REDE_RECEIVABLES_ENDPOINT`, `REDE_CLIENT_ID`, `REDE_CLIENT_SECRET`, `REDE_MERCHANT_ID` e `REDE_PV` nos arquivos `.env`, sem versionar segredos.
 
 ## Proximos passos
 
