@@ -1,0 +1,48 @@
+export type FinancialTitle = {
+  id: string;
+  externalId?: string | null;
+  titleNumber: string;
+  customerName?: string | null;
+  customerDocument?: string | null;
+  orderNumber?: string | null;
+  installmentNumber?: number | null;
+  totalInstallments?: number | null;
+  grossAmount: string;
+  netAmountExpected?: string | null;
+  paidAmount?: string | null;
+  dueDate: string;
+  issueDate?: string | null;
+  paidAt?: string | null;
+  status: string;
+  gatewayProvider?: string | null;
+  nsu?: string | null;
+  authorizationCode?: string | null;
+  tid?: string | null;
+  transactionId?: string | null;
+  metadata?: unknown;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  reconciliations?: Array<Record<string, unknown>>;
+  auditEvents?: Array<Record<string, unknown>>;
+};
+
+export type FinancialTitleFormValues = {
+  titleNumber: string;
+  externalId?: string;
+  customerName: string;
+  customerDocument?: string;
+  orderNumber?: string;
+  installmentNumber?: number;
+  totalInstallments?: number;
+  grossAmount: string;
+  netAmountExpected?: string;
+  dueDate: string;
+  issueDate?: string;
+  gatewayProvider?: string;
+  nsu?: string;
+  authorizationCode?: string;
+  tid?: string;
+  transactionId?: string;
+  justification: string;
+};

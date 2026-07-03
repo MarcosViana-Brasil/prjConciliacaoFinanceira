@@ -53,6 +53,18 @@ O script cria `.env` se estiver ausente, sobe Postgres/PgAdmin, aplica migration
 
 No PgAdmin, cadastre um servidor apontando para o host `postgres`, porta `5432`, usuario e senha configurados no `.env`. Para conexoes pelo host local, use `localhost:15433`.
 
+## Painel Frontend MVP
+
+O painel Next.js fica em `frontend/` e entrega as telas iniciais do fluxo financeiro:
+
+- `/dashboard` com indicadores operacionais.
+- `/titulos`, `/titulos/novo` e `/titulos/[id]` para consulta e cadastro manual de titulos.
+- `/rede/transacoes` e `/rede/recebiveis` para dados normalizados da Rede e importacao mockada/controlada.
+- `/conciliacao`, `/conciliacao/[id]` e `/divergencias` para execucao, revisao e decisao manual de conciliacoes.
+- `/auditoria`, `/payloads`, `/jobs` e `/configuracoes` para rastreabilidade e operacao.
+
+Ao rodar fora do Docker, configure `frontend/.env.local` com `NEXT_PUBLIC_API_URL=http://localhost:3001`. Pelo Compose, use a variavel raiz `NEXT_PUBLIC_API_URL=http://localhost:3101`.
+
 ## Prisma
 
 Dentro do container do backend:
@@ -84,6 +96,12 @@ ADMIN_PASSWORD=troque_esta_senha
 ```
 
 O seed cria os perfis `ADMIN`, `FINANCEIRO`, `AUDITOR` e `SOMENTE_LEITURA`, alem do usuario administrador inicial. A senha nao fica hardcoded no codigo.
+
+O seed tambem inclui uma carga demo idempotente para visualizacao do painel: titulos financeiros, transacoes e recebiveis Rede, payloads brutos, conciliacoes, divergencia, job e evento de auditoria. Para recarregar esses dados no ambiente Docker:
+
+```bash
+docker compose exec backend npm run prisma:seed
+```
 
 ## Rodar fora do Docker
 

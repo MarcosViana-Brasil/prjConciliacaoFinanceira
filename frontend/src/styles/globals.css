@@ -12,6 +12,8 @@
 
 body {
   margin: 0;
+  background: #f6f7f9;
+  color: #17202a;
   font-family:
     Inter,
     ui-sans-serif,
@@ -22,3 +24,9 @@ body {
     sans-serif;
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
