@@ -100,6 +100,15 @@ Todas as respostas seguem o envelope padrao `{ success, data, message }` ou `{ s
 - `POST /api/users` - cria usuario, hasheia senha e registra auditoria.
 - `PUT /api/users/:id` - atualiza usuario e registra before/after.
 - `DELETE /api/users/:id` - soft delete de usuario.
+- `GET /api/financial-titles` - lista titulos financeiros com filtros, busca e paginacao.
+- `GET /api/financial-titles/:id` - busca titulo financeiro com dados de conciliacao futura e auditoria resumida.
+- `POST /api/financial-titles` - cria titulo financeiro com validacoes monetarias e auditoria.
+- `PUT /api/financial-titles/:id` - atualiza titulo financeiro e registra before/after.
+- `PATCH /api/financial-titles/:id/cancel` - cancela titulo financeiro com justificativa.
+- `PATCH /api/financial-titles/:id/mark-paid` - registra baixa manual com justificativa.
+- `PATCH /api/financial-titles/:id/restore` - restaura titulo excluido logicamente.
+- `DELETE /api/financial-titles/:id` - soft delete de titulo financeiro.
+- `POST /api/financial-titles/import` - importa titulos em lote com idempotencia por `externalId` ou `titleNumber`.
 - `GET /api/audit-events` - lista auditoria com filtros por entidade, acao, usuario e periodo.
 - `GET /api/audit-events/:entity/:entityId` - lista auditoria de uma entidade.
 - `GET /api/payloads` - lista payloads brutos com filtros por provider, status, endpoint e periodo.
@@ -112,6 +121,48 @@ Todas as respostas seguem o envelope padrao `{ success, data, message }` ou `{ s
 - `PUT /api/settings/:key` - cria ou atualiza configuracao e registra auditoria.
 
 Enquanto a autenticacao completa nao existe, as acoes auditadas aceitam o header temporario `x-user-id`. Sem esse header, a auditoria e registrada como operacao de sistema.
+
+Exemplo de criacao de titulo financeiro:
+
+```json
+{
+  "externalId": "ERP-123",
+  "titleNumber": "TIT-000123",
+  "customerName": "Cliente Exemplo LTDA",
+  "customerDocument": "12.345.678/0001-99",
+  "orderNumber": "PED-123",
+  "installmentNumber": 1,
+  "totalInstallments": 3,
+  "grossAmount": "100.00",
+  "netAmountExpected": "96.50",
+  "paidAmount": "0.00",
+  "dueDate": "2026-07-10",
+  "issueDate": "2026-07-01",
+  "gatewayProvider": "REDE",
+  "metadata": {
+    "source": "manual"
+  },
+  "justification": "Cadastro inicial do titulo"
+}
+```
+
+Exemplo de importacao em lote:
+
+```json
+{
+  "source": "ERP",
+  "items": [
+    {
+      "externalId": "ERP-123",
+      "titleNumber": "TIT-000123",
+      "customerName": "Cliente Exemplo LTDA",
+      "grossAmount": "100.00",
+      "dueDate": "2026-07-10"
+    }
+  ],
+  "justification": "Importacao inicial de titulos do ERP"
+}
+```
 
 ## Proximos passos
 
