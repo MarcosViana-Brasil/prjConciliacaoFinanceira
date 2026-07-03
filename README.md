@@ -90,6 +90,29 @@ npm install
 npm run dev
 ```
 
+## Rotas Backend MVP
+
+Todas as respostas seguem o envelope padrao `{ success, data, message }` ou `{ success: false, error }`. Rotas paginadas aceitam `page` e `limit` com limite maximo de 100.
+
+- `GET /health` - health check do backend.
+- `GET /api/users` - lista usuarios com `search` e `status`.
+- `GET /api/users/:id` - busca usuario por ID.
+- `POST /api/users` - cria usuario, hasheia senha e registra auditoria.
+- `PUT /api/users/:id` - atualiza usuario e registra before/after.
+- `DELETE /api/users/:id` - soft delete de usuario.
+- `GET /api/audit-events` - lista auditoria com filtros por entidade, acao, usuario e periodo.
+- `GET /api/audit-events/:entity/:entityId` - lista auditoria de uma entidade.
+- `GET /api/payloads` - lista payloads brutos com filtros por provider, status, endpoint e periodo.
+- `GET /api/payloads/:id` - busca payload bruto por ID.
+- `POST /api/payloads` - salva payload bruto com hash idempotente, auditoria e log tecnico mascarado.
+- `PATCH /api/payloads/:id/status` - atualiza status de processamento e registra auditoria.
+- `GET /api/api-logs` - lista logs tecnicos com filtros por provider, direcao, endpoint, status e periodo.
+- `GET /api/jobs` - lista execucoes de jobs.
+- `GET /api/settings` - lista configuracoes sem expor valores sensiveis.
+- `PUT /api/settings/:key` - cria ou atualiza configuracao e registra auditoria.
+
+Enquanto a autenticacao completa nao existe, as acoes auditadas aceitam o header temporario `x-user-id`. Sem esse header, a auditoria e registrada como operacao de sistema.
+
 ## Proximos passos
 
 1. Criar autenticacao basica e perfis de acesso.
