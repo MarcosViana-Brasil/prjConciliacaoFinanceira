@@ -12,7 +12,8 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "tsx prisma/seed.ts",
     "prisma:push": "prisma db push",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "tsx --test src/modules/conciliacao/reconciliation.engine.test.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

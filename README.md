@@ -130,6 +130,13 @@ Todas as respostas seguem o envelope padrao `{ success, data, message }` ou `{ s
 - `GET /api/gateways/rede/transactions/:id` - busca transacao Rede por ID.
 - `GET /api/gateways/rede/receivables` - lista recebiveis Rede com filtros e paginacao.
 - `GET /api/gateways/rede/receivables/:id` - busca recebivel Rede por ID.
+- `POST /api/reconciliation/run` - executa o motor inicial de conciliacao automatica.
+- `GET /api/reconciliation` - lista conciliacoes com filtros por status, score, periodo e entidades vinculadas.
+- `GET /api/reconciliation/:id` - busca conciliacao com titulo, transacao, recebivel, divergencias e auditoria resumida.
+- `GET /api/reconciliation/divergences` - lista divergencias com filtros.
+- `POST /api/reconciliation/:id/approve-manual` - aprova conciliacao manual com justificativa.
+- `POST /api/reconciliation/:id/reject` - rejeita sugestao de conciliacao com justificativa.
+- `POST /api/reconciliation/:id/reverse` - reverte conciliacao com motivo auditado.
 - `GET /api/audit-events` - lista auditoria com filtros por entidade, acao, usuario e periodo.
 - `GET /api/audit-events/:entity/:entityId` - lista auditoria de uma entidade.
 - `GET /api/payloads` - lista payloads brutos com filtros por provider, status, endpoint e periodo.
@@ -195,6 +202,18 @@ Exemplo de importacao mockada da Rede:
 ```
 
 Por padrao, o modulo Rede usa mocks controlados (`REDE_USE_MOCKS=true`). Para usar endpoints reais ou homologacao contratada, configure `REDE_BASE_URL`, `REDE_TRANSACTIONS_ENDPOINT`, `REDE_RECEIVABLES_ENDPOINT`, `REDE_CLIENT_ID`, `REDE_CLIENT_SECRET`, `REDE_MERCHANT_ID` e `REDE_PV` nos arquivos `.env`, sem versionar segredos.
+
+Exemplo de execucao da conciliacao:
+
+```json
+{
+  "startDate": "2026-07-01",
+  "endDate": "2026-07-03",
+  "gatewayProvider": "REDE"
+}
+```
+
+O motor inicial calcula score de 0 a 100, classifica o match como forte, medio, fraco ou inexistente, gera divergencias quando necessario e atualiza titulos para `RECONCILED` apenas quando a conciliacao automatica e segura.
 
 ## Proximos passos
 
