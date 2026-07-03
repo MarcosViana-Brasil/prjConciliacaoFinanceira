@@ -14,19 +14,26 @@ enum UserStatus {
 }
 
 enum FinancialTitleStatus {
-  PENDING
   OPEN
   PAID
+  PARTIALLY_PAID
   OVERDUE
   CANCELED
-  DELETED
+  RECONCILED
+  DIVERGENT
 }
 
 enum GatewayProvider {
   REDE
+  STONE
+  CIELO
+  GETNET
+  PAGSEGURO
+  MERCADO_PAGO
+  OTHER
 }
 
-enum IntegrationStatus {
+enum GatewayIntegrationStatus {
   ACTIVE
   INACTIVE
   ERROR
@@ -34,9 +41,66 @@ enum IntegrationStatus {
 
 enum RawPayloadStatus {
   RECEIVED
+  STORED
+  NORMALIZED
   PROCESSED
   ERROR
-  IGNORED
+  REPROCESSED
+}
+
+enum RedeTransactionStatus {
+  AUTHORIZED
+  CAPTURED
+  CANCELED
+  REFUNDED
+  CHARGEBACK
+  UNKNOWN
+}
+
+enum ReceivableStatus {
+  PENDING
+  PAID
+  CANCELED
+  ANTICIPATED
+  ADJUSTED
+  UNKNOWN
+}
+
+enum ReconciliationStatus {
+  PENDING
+  MATCHED_AUTOMATICALLY
+  MATCHED_MANUALLY
+  DIVERGENT
+  NOT_FOUND
+  DUPLICATED
+  CANCELED
+  REVERSED
+  ERROR
+}
+
+enum ReconciliationMatchLevel {
+  STRONG
+  MEDIUM
+  WEAK
+  NONE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  SOFT_DELETE
+  IMPORT
+  NORMALIZE
+  PROCESS
+  RECONCILE_AUTO
+  RECONCILE_MANUAL
+  REVERSE_RECONCILIATION
+  EXPORT
+  VIEW_RAW_PAYLOAD
+  LOGIN
+  LOGOUT
+  ERROR
 }
 
 enum JobStatus {
@@ -44,7 +108,7 @@ enum JobStatus {
   RUNNING
   SUCCESS
   FAILED
-  CANCELED
+  PARTIAL_SUCCESS
 }
 
 enum ApiLogDirection {
@@ -52,72 +116,125 @@ enum ApiLogDirection {
   OUTBOUND
 }
 
+enum ReconciliationDivergenceType {
+  VALUE_DIFFERENCE
+  DATE_DIFFERENCE
+  INSTALLMENT_DIFFERENCE
+  STATUS_DIFFERENCE
+  DUPLICATED_RECEIVABLE
+  TITLE_NOT_FOUND
+  RECEIVABLE_NOT_FOUND
+  MANUAL_REVIEW_REQUIRED
+}
+
+enum DivergenceSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 model Role {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @unique
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String     @unique
   description String?
-  metadata    Json      @default("{}")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   deletedAt   DateTime?
-  users       User[]
+  users       UserRole[]
 
   @@map("roles")
 }
 
 model User {
-  id           String     @id @default(uuid()) @db.Uuid
-  roleId       String?    @db.Uuid
+  id           String       @id @default(uuid()) @db.Uuid
   name         String
-  email        String     @unique
-  passwordHash String?
-  status       UserStatus @default(ACTIVE)
-  metadata     Json       @default("{}")
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  email        String       @unique
+  passwordHash String
+  status       UserStatus   @default(ACTIVE)
+  lastLoginAt  DateTime?
+  metadata     Json         @default("{}")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
   deletedAt    DateTime?
-  role         Role?      @relation(fields: [roleId], references: [id])
+  roles        UserRole[]
+  auditEvents  AuditEvent[]
 
-  @@index([roleId])
   @@index([status])
   @@map("users")
 }
 
-model FinancialTitle {
-  id            String               @id @default(uuid()) @db.Uuid
-  titleNumber   String
-  customerName  String?
-  document      String?
-  amount        Decimal              @db.Decimal(14, 2)
-  dueDate       DateTime
-  paidAt        DateTime?
-  status        FinancialTitleStatus @default(PENDING)
-  gatewayRef    String?
-  metadata      Json                 @default("{}")
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  deletedAt     DateTime?
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  roleId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  role      Role     @relation(fields: [roleId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
+  @@unique([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model FinancialTitle {
+  id                String               @id @default(uuid()) @db.Uuid
+  externalId        String?
+  titleNumber       String
+  customerName      String?
+  customerDocument  String?
+  orderNumber       String?
+  installmentNumber Int?
+  totalInstallments Int?
+  grossAmount       Decimal              @db.Decimal(14, 2)
+  netAmountExpected Decimal?             @db.Decimal(14, 2)
+  paidAmount        Decimal?             @db.Decimal(14, 2)
+  dueDate           DateTime
+  issueDate         DateTime?
+  paidAt            DateTime?
+  status            FinancialTitleStatus @default(OPEN)
+  gatewayProvider   GatewayProvider?
+  gatewayReference  String?
+  nsu               String?
+  authorizationCode String?
+  tid               String?
+  transactionId     String?
+  metadata          Json                 @default("{}")
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  deletedAt         DateTime?
+  reconciliations   Reconciliation[]
+  divergences       ReconciliationDivergence[]
+
+  @@index([externalId])
   @@index([titleNumber])
-  @@index([document])
-  @@index([amount])
-  @@index([dueDate])
+  @@index([orderNumber])
+  @@index([nsu])
+  @@index([authorizationCode])
+  @@index([tid])
+  @@index([transactionId])
   @@index([status])
+  @@index([dueDate])
+  @@index([gatewayProvider])
   @@map("financial_titles")
 }
 
 model GatewayIntegration {
-  id          String            @id @default(uuid()) @db.Uuid
-  provider    GatewayProvider
-  name        String
-  status      IntegrationStatus @default(INACTIVE)
-  baseUrl     String?
-  metadata    Json              @default("{}")
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  deletedAt   DateTime?
-  rawPayloads RawPayload[]
-  apiLogs     ApiLog[]
+  id             String                   @id @default(uuid()) @db.Uuid
+  provider       GatewayProvider
+  name           String
+  status         GatewayIntegrationStatus @default(INACTIVE)
+  baseUrl        String?
+  merchantId     String?
+  config         Json                     @default("{}")
+  metadata       Json                     @default("{}")
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  deletedAt      DateTime?
+  rawPayloads    RawPayload[]
+  redeTransactions RedeTransaction[]
+  apiLogs        ApiLog[]
 
   @@unique([provider, name])
   @@index([provider])
@@ -126,93 +243,261 @@ model GatewayIntegration {
 }
 
 model RawPayload {
-  id                   String             @id @default(uuid()) @db.Uuid
-  gatewayIntegrationId String?            @db.Uuid
-  provider             GatewayProvider
-  externalId           String?
-  source               String
-  payloadHash          String             @unique
-  payload              Json
-  status               RawPayloadStatus   @default(RECEIVED)
-  receivedAt           DateTime           @default(now())
-  processedAt          DateTime?
-  metadata             Json               @default("{}")
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  gatewayIntegration   GatewayIntegration? @relation(fields: [gatewayIntegrationId], references: [id])
+  id              String             @id @default(uuid()) @db.Uuid
+  provider        GatewayProvider
+  integrationId   String?            @db.Uuid
+  endpoint        String?
+  httpMethod      String?
+  requestParams   Json?
+  requestPayload  Json?
+  responsePayload Json?
+  responseStatus  Int?
+  rawPayload      Json
+  payloadHash     String?            @unique
+  status          RawPayloadStatus   @default(RECEIVED)
+  errorMessage    String?
+  processedAt     DateTime?
+  receivedAt      DateTime           @default(now())
+  metadata        Json               @default("{}")
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  integration     GatewayIntegration? @relation(fields: [integrationId], references: [id])
+  redeTransactions RedeTransaction[]
+  redeReceivables RedeReceivable[]
 
-  @@index([gatewayIntegrationId])
+  @@index([integrationId])
   @@index([provider])
-  @@index([externalId])
   @@index([status])
   @@index([receivedAt])
   @@map("raw_payloads")
 }
 
+model RedeTransaction {
+  id                String                @id @default(uuid()) @db.Uuid
+  rawPayloadId      String?               @db.Uuid
+  integrationId     String?               @db.Uuid
+  transactionId     String
+  tid               String?
+  nsu               String?
+  authorizationCode String?
+  orderNumber       String?
+  saleDate          DateTime?
+  captureDate       DateTime?
+  grossAmount       Decimal               @db.Decimal(14, 2)
+  netAmount         Decimal?              @db.Decimal(14, 2)
+  feeAmount         Decimal?              @db.Decimal(14, 2)
+  installmentNumber Int?
+  totalInstallments Int?
+  brand             String?
+  paymentMethod     String?
+  status            RedeTransactionStatus @default(UNKNOWN)
+  establishmentCode String?
+  metadata          Json                  @default("{}")
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  integration       GatewayIntegration?   @relation(fields: [integrationId], references: [id])
+  rawPayload        RawPayload?           @relation(fields: [rawPayloadId], references: [id])
+  redeReceivables   RedeReceivable[]
+  reconciliations   Reconciliation[]
+
+  @@unique([transactionId, installmentNumber])
+  @@index([rawPayloadId])
+  @@index([integrationId])
+  @@index([transactionId])
+  @@index([tid])
+  @@index([nsu])
+  @@index([authorizationCode])
+  @@index([orderNumber])
+  @@index([saleDate])
+  @@index([status])
+  @@map("rede_transactions")
+}
+
+model RedeReceivable {
+  id                  String           @id @default(uuid()) @db.Uuid
+  rawPayloadId        String?          @db.Uuid
+  transactionId       String
+  redeTransactionId   String?          @db.Uuid
+  nsu                 String?
+  authorizationCode   String?
+  expectedPaymentDate DateTime?
+  actualPaymentDate   DateTime?
+  grossAmount         Decimal          @db.Decimal(14, 2)
+  netAmount           Decimal?         @db.Decimal(14, 2)
+  feeAmount           Decimal?         @db.Decimal(14, 2)
+  adjustmentAmount    Decimal?         @db.Decimal(14, 2)
+  installmentNumber   Int?
+  totalInstallments   Int?
+  status              ReceivableStatus @default(UNKNOWN)
+  bankCode            String?
+  agency              String?
+  account             String?
+  metadata            Json             @default("{}")
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  rawPayload          RawPayload?      @relation(fields: [rawPayloadId], references: [id])
+  redeTransaction     RedeTransaction? @relation(fields: [redeTransactionId], references: [id])
+  reconciliations     Reconciliation[]
+  divergences         ReconciliationDivergence[]
+
+  @@unique([transactionId, installmentNumber, expectedPaymentDate])
+  @@index([rawPayloadId])
+  @@index([redeTransactionId])
+  @@index([transactionId])
+  @@index([nsu])
+  @@index([authorizationCode])
+  @@index([expectedPaymentDate])
+  @@index([actualPaymentDate])
+  @@index([status])
+  @@map("rede_receivables")
+}
+
+model Reconciliation {
+  id                String                      @id @default(uuid()) @db.Uuid
+  financialTitleId  String?                     @db.Uuid
+  redeTransactionId String?                     @db.Uuid
+  redeReceivableId  String?                     @db.Uuid
+  provider          GatewayProvider
+  status            ReconciliationStatus        @default(PENDING)
+  matchLevel        ReconciliationMatchLevel    @default(NONE)
+  score             Int                         @default(0) @db.SmallInt
+  matchedBy         String?
+  matchedAt         DateTime?
+  reversedAt        DateTime?
+  reversalReason    String?
+  grossAmountDiff   Decimal?                    @db.Decimal(14, 2)
+  netAmountDiff     Decimal?                    @db.Decimal(14, 2)
+  dateDiffDays      Int?
+  ruleApplied       String?
+  justification     String?
+  metadata          Json                        @default("{}")
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+  deletedAt         DateTime?
+  financialTitle    FinancialTitle?             @relation(fields: [financialTitleId], references: [id])
+  redeTransaction   RedeTransaction?            @relation(fields: [redeTransactionId], references: [id])
+  redeReceivable    RedeReceivable?             @relation(fields: [redeReceivableId], references: [id])
+  divergences       ReconciliationDivergence[]
+
+  @@index([financialTitleId])
+  @@index([redeTransactionId])
+  @@index([redeReceivableId])
+  @@index([status])
+  @@index([score])
+  @@map("reconciliations")
+}
+
+model ReconciliationDivergence {
+  id                String                       @id @default(uuid()) @db.Uuid
+  reconciliationId  String?                      @db.Uuid
+  financialTitleId  String?                      @db.Uuid
+  redeReceivableId  String?                      @db.Uuid
+  divergenceType    ReconciliationDivergenceType
+  description       String
+  expectedValue     Json?
+  actualValue       Json?
+  severity          DivergenceSeverity           @default(MEDIUM)
+  resolved          Boolean                      @default(false)
+  resolvedAt        DateTime?
+  resolvedBy        String?
+  resolutionNote    String?
+  metadata          Json                         @default("{}")
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+  reconciliation    Reconciliation?              @relation(fields: [reconciliationId], references: [id])
+  financialTitle    FinancialTitle?              @relation(fields: [financialTitleId], references: [id])
+  redeReceivable    RedeReceivable?              @relation(fields: [redeReceivableId], references: [id])
+
+  @@index([reconciliationId])
+  @@index([financialTitleId])
+  @@index([redeReceivableId])
+  @@index([divergenceType])
+  @@index([resolved])
+  @@map("reconciliation_divergences")
+}
+
 model AuditEvent {
-  id            String   @id @default(uuid()) @db.Uuid
+  id            String      @id @default(uuid()) @db.Uuid
   entity        String
   entityId      String
-  action        String
-  userId        String?  @db.Uuid
-  origin        String
-  occurredAt    DateTime @default(now())
-  previousValue Json?
-  newValue      Json?
-  justification String?
+  action        AuditAction
+  userId        String?     @db.Uuid
+  origin        String?
   ipAddress     String?
   userAgent     String?
-  metadata      Json     @default("{}")
-  eventHash     String   @unique
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  before        Json?
+  after         Json?
+  justification String?
+  metadata      Json        @default("{}")
+  eventHash     String      @unique
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  user          User?       @relation(fields: [userId], references: [id])
 
   @@index([entity, entityId])
   @@index([action])
-  @@index([occurredAt])
+  @@index([userId])
+  @@index([createdAt])
   @@map("audit_events")
 }
 
-model JobExecution {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String
-  status      JobStatus @default(PENDING)
-  startedAt   DateTime?
-  finishedAt  DateTime?
-  errorMessage String?
-  metadata    Json      @default("{}")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+model ApiLog {
+  id              String           @id @default(uuid()) @db.Uuid
+  provider        GatewayProvider?
+  integrationId   String?          @db.Uuid
+  direction       ApiLogDirection
+  endpoint        String
+  httpMethod      String
+  requestHeaders  Json?
+  requestPayload  Json?
+  responseStatus  Int?
+  responsePayload Json?
+  durationMs      Int?
+  errorMessage    String?
+  metadata        Json             @default("{}")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  integration     GatewayIntegration? @relation(fields: [integrationId], references: [id])
 
-  @@index([name])
+  @@index([provider])
+  @@index([integrationId])
+  @@index([direction])
+  @@index([endpoint])
+  @@index([responseStatus])
+  @@index([createdAt])
+  @@map("api_logs")
+}
+
+model JobExecution {
+  id             String    @id @default(uuid()) @db.Uuid
+  jobName        String
+  status         JobStatus @default(PENDING)
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  durationMs     Int?
+  processedCount Int       @default(0)
+  successCount   Int       @default(0)
+  errorCount     Int       @default(0)
+  errorMessage   String?
+  metadata       Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([jobName])
   @@index([status])
   @@index([startedAt])
   @@map("job_executions")
 }
 
-model ApiLog {
-  id                   String           @id @default(uuid()) @db.Uuid
-  gatewayIntegrationId String?          @db.Uuid
-  direction            ApiLogDirection
-  method               String
-  endpoint             String
-  statusCode           Int?
-  requestHash          String?
-  responseHash         String?
-  requestPayload       Json?
-  responsePayload      Json?
-  errorMessage         String?
-  durationMs           Int?
-  metadata             Json             @default("{}")
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-  gatewayIntegration   GatewayIntegration? @relation(fields: [gatewayIntegrationId], references: [id])
+model SystemSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  value       Json
+  description String?
+  isEncrypted Boolean  @default(false)
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@index([gatewayIntegrationId])
-  @@index([direction])
-  @@index([endpoint])
-  @@index([statusCode])
-  @@index([createdAt])
-  @@map("api_logs")
+  @@map("system_settings")
 }
-

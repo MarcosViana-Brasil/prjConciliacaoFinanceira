@@ -46,6 +46,9 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://fip_user:change_me@postgres:5432/fip_core?schema=public}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3100}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      ADMIN_NAME: ${ADMIN_NAME:-FIP Admin}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change_me}
     ports:
       - "${BACKEND_PORT:-3101}:3001"
     volumes:
@@ -54,7 +57,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: sh -c "npm install && npx prisma db push && npm run dev"
+    command: sh -c "npm install && npm run prisma:generate && npm run dev"
     networks:
       - fip-core-network
 

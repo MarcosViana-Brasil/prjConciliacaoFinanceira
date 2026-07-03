@@ -43,8 +43,10 @@ No PgAdmin, cadastre um servidor apontando para o host `postgres`, porta `5432`,
 Dentro do container do backend:
 
 ```bash
-docker compose exec backend npx prisma db push
-docker compose exec backend npx prisma studio
+docker compose exec backend npm run prisma:generate
+docker compose exec backend npm run prisma:migrate -- --name initial_schema
+docker compose exec backend npm run prisma:seed
+docker compose exec backend npm run prisma:studio
 ```
 
 Para criar migrations versionadas em desenvolvimento local:
@@ -52,8 +54,21 @@ Para criar migrations versionadas em desenvolvimento local:
 ```bash
 cd backend
 npm install
-npx prisma migrate dev --name initial_schema
+cp .env.example .env
+npm run prisma:generate
+npm run prisma:migrate -- --name initial_schema
+npm run prisma:seed
 ```
+
+Antes de executar o seed, configure no `.env` do backend ou no `.env` raiz:
+
+```bash
+ADMIN_NAME=FIP Admin
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=troque_esta_senha
+```
+
+O seed cria os perfis `ADMIN`, `FINANCEIRO`, `AUDITOR` e `SOMENTE_LEITURA`, alem do usuario administrador inicial. A senha nao fica hardcoded no codigo.
 
 ## Rodar fora do Docker
 
