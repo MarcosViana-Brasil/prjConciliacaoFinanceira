@@ -13,6 +13,20 @@ export class JobsService {
     return this.jobsRepository.list(filters);
   }
 
+  async getById(id: string) {
+    const job = await this.jobsRepository.findById(id);
+
+    if (!job) {
+      throw new AppError('Execucao de job nao encontrada', 404, 'JOB_NOT_FOUND');
+    }
+
+    return job;
+  }
+
+  async hasRunningJob(jobName: string) {
+    return this.jobsRepository.hasRunningJob(jobName);
+  }
+
   async startJob(input: StartJobInput, context?: RequestContext) {
     const job = await this.jobsRepository.create({
       jobName: input.jobName,

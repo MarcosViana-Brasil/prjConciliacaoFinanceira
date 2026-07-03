@@ -39,6 +39,17 @@ export class JobsRepository {
     return prisma.jobExecution.findUnique({ where: { id } });
   }
 
+  async hasRunningJob(jobName: string) {
+    const count = await prisma.jobExecution.count({
+      where: {
+        jobName,
+        status: 'RUNNING'
+      }
+    });
+
+    return count > 0;
+  }
+
   async finish(id: string, input: Omit<FinishJobInput, 'metadata'> & { finishedAt: Date; durationMs?: number; metadata?: Prisma.InputJsonValue }) {
     return prisma.jobExecution.update({
       where: { id },

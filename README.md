@@ -163,6 +163,11 @@ Todas as respostas seguem o envelope padrao `{ success, data, message }` ou `{ s
 - `PATCH /api/payloads/:id/status` - atualiza status de processamento e registra auditoria.
 - `GET /api/api-logs` - lista logs tecnicos com filtros por provider, direcao, endpoint, status e periodo.
 - `GET /api/jobs` - lista execucoes de jobs.
+- `GET /api/jobs/:id` - busca uma execucao de job por ID.
+- `POST /api/jobs/import-rede-transactions/run` - executa manualmente o job de importacao de transacoes Rede.
+- `POST /api/jobs/import-rede-receivables/run` - executa manualmente o job de importacao de recebiveis Rede.
+- `POST /api/jobs/reconciliation/run` - executa manualmente o job de conciliacao automatica.
+- `POST /api/jobs/reprocess-payload/:rawPayloadId` - reprocessa payload bruto com justificativa obrigatoria.
 - `GET /api/settings` - lista configuracoes sem expor valores sensiveis.
 - `PUT /api/settings/:key` - cria ou atualiza configuracao e registra auditoria.
 
@@ -232,6 +237,57 @@ Exemplo de execucao da conciliacao:
 ```
 
 O motor inicial calcula score de 0 a 100, classifica o match como forte, medio, fraco ou inexistente, gera divergencias quando necessario e atualiza titulos para `RECONCILED` apenas quando a conciliacao automatica e segura.
+
+## Jobs e Scheduler
+
+O backend possui um runner generico de jobs com lock simples por `jobName`: se uma execucao estiver `RUNNING`, uma nova chamada manual ou agendada recebe erro `JOB_ALREADY_RUNNING`.
+
+Jobs disponiveis no MVP:
+
+- `IMPORT_REDE_TRANSACTIONS`
+- `IMPORT_REDE_RECEIVABLES`
+- `RUN_RECONCILIATION`
+- `REPROCESS_PAYLOAD`
+- `CLEANUP_OLD_LOGS` como placeholder seguro, sem exclusao fisica
+
+Variaveis principais:
+
+```env
+JOBS_ENABLED=true
+JOB_IMPORT_REDE_TRANSACTIONS_ENABLED=true
+JOB_IMPORT_REDE_TRANSACTIONS_CRON=0 6 * * *
+JOB_IMPORT_REDE_RECEIVABLES_ENABLED=true
+JOB_IMPORT_REDE_RECEIVABLES_CRON=30 6 * * *
+JOB_RECONCILIATION_ENABLED=true
+JOB_RECONCILIATION_CRON=0 7 * * *
+JOB_DEFAULT_LOOKBACK_DAYS=3
+JOB_CLEANUP_OLD_LOGS_ENABLED=false
+JOB_LOG_RETENTION_DAYS=90
+```
+
+Execucao manual:
+
+```bash
+curl -X POST http://localhost:3101/api/jobs/import-rede-transactions/run \
+  -H "Content-Type: application/json" \
+  -d "{\"startDate\":\"2026-07-01\",\"endDate\":\"2026-07-03\"}"
+
+curl -X POST http://localhost:3101/api/jobs/import-rede-receivables/run \
+  -H "Content-Type: application/json" \
+  -d "{\"startDate\":\"2026-07-01\",\"endDate\":\"2026-07-03\"}"
+
+curl -X POST http://localhost:3101/api/jobs/reconciliation/run \
+  -H "Content-Type: application/json" \
+  -d "{\"startDate\":\"2026-07-01\",\"endDate\":\"2026-07-03\",\"gatewayProvider\":\"REDE\"}"
+```
+
+Reprocessamento de payload bruto:
+
+```bash
+curl -X POST http://localhost:3101/api/jobs/reprocess-payload/{rawPayloadId} \
+  -H "Content-Type: application/json" \
+  -d "{\"justification\":\"Reprocessamento solicitado apos ajuste no normalizador.\"}"
+```
 
 ## Proximos passos
 

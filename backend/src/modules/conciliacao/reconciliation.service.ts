@@ -31,6 +31,111 @@ import { amountDiff, dateDiffDays, toNumber } from './reconciliation.utils.js';
 export class ReconciliationService {
   constructor(private readonly reconciliationRepository = new ReconciliationRepository()) {}
 
+  async runWithoutJob(input: RunReconciliationInput, context: RequestContext): Promise<RunReconciliationSummary> {
+    const summary: RunReconciliationSummary = {
+      processed: 0,
+      matchedAutomatically: 0,
+      divergent: 0,
+      notFound: 0,
+      errors: []
+    };
+
+    const titles = await this.reconciliationRepository.findTitlesForRun(input);
+    const candidatesData = await this.reconciliationRepository.findCandidates(input);
+
+    for (const title of titles) {
+      try {
+        summary.processed += 1;
+        const candidates = this.buildCandidates(candidatesData.transactions, candidatesData.receivables);
+        const bestMatch = findBestMatchForTitle(title, candidates);
+        const redeReceivableId = bestMatch.receivable?.id;
+
+        if (redeReceivableId && bestMatch.status === ReconciliationStatus.MATCHED_AUTOMATICALLY) {
+          const alreadyUsed = await this.reconciliationRepository.hasActiveReceivableReconciliation(redeReceivableId);
+
+          if (alreadyUsed) {
+            bestMatch.status = ReconciliationStatus.DIVERGENT;
+            bestMatch.differences.push({
+              type: ReconciliationDivergenceType.DUPLICATED_RECEIVABLE,
+              description: 'Recebivel ja vinculado a uma conciliacao ativa',
+              actualValue: redeReceivableId,
+              severity: DivergenceSeverity.CRITICAL
+            });
+          }
+        }
+
+        const existing = await this.reconciliationRepository.findActiveForPair({
+          financialTitleId: title.id,
+          redeTransactionId: bestMatch.transaction?.id,
+          redeReceivableId
+        });
+
+        if (existing) {
+          continue;
+        }
+
+        const reconciliation = await this.reconciliationRepository.createReconciliation(
+          {
+            financialTitleId: title.id,
+            redeTransactionId: bestMatch.transaction?.id,
+            redeReceivableId,
+            provider: input.gatewayProvider,
+            status: bestMatch.status,
+            matchLevel: bestMatch.matchLevel,
+            score: bestMatch.score,
+            matchedBy: bestMatch.status === ReconciliationStatus.MATCHED_AUTOMATICALLY ? 'system' : undefined,
+            matchedAt: bestMatch.status === ReconciliationStatus.MATCHED_AUTOMATICALLY ? new Date() : undefined,
+            grossAmountDiff: this.decimalDiff(title.grossAmount, bestMatch.receivable?.grossAmount ?? bestMatch.transaction?.grossAmount),
+            netAmountDiff: this.decimalDiff(title.netAmountExpected, bestMatch.receivable?.netAmount ?? bestMatch.transaction?.netAmount),
+            dateDiffDays: dateDiffDays(title.dueDate, bestMatch.receivable?.expectedPaymentDate ?? bestMatch.transaction?.saleDate),
+            ruleApplied: bestMatch.ruleApplied,
+            metadata: toInputJson({ engineResult: bestMatch })
+          },
+          bestMatch.status === ReconciliationStatus.MATCHED_AUTOMATICALLY ? [] : bestMatch.differences
+        );
+
+        if (bestMatch.status === ReconciliationStatus.MATCHED_AUTOMATICALLY) {
+          summary.matchedAutomatically += 1;
+          await this.applyTitleReconciled(title.id, bestMatch);
+          await auditService.recordEvent({
+            entity: 'Reconciliation',
+            entityId: reconciliation.id,
+            action: AuditAction.RECONCILE_AUTO,
+            userId: context.userId,
+            origin: context.origin,
+            ipAddress: context.ipAddress,
+            userAgent: context.userAgent,
+            after: reconciliation,
+            metadata: { financialTitleId: title.id, score: bestMatch.score }
+          });
+        } else if (bestMatch.status === ReconciliationStatus.NOT_FOUND) {
+          summary.notFound += 1;
+        } else {
+          summary.divergent += 1;
+        }
+      } catch (error) {
+        summary.errors.push({
+          financialTitleId: title.id,
+          message: error instanceof Error ? error.message : 'Erro inesperado ao conciliar titulo'
+        });
+      }
+    }
+
+    await auditService.recordEvent({
+      entity: 'Reconciliation',
+      entityId: `run:${Date.now()}`,
+      action: summary.matchedAutomatically ? AuditAction.RECONCILE_AUTO : AuditAction.PROCESS,
+      userId: context.userId,
+      origin: context.origin,
+      ipAddress: context.ipAddress,
+      userAgent: context.userAgent,
+      after: summary,
+      metadata: { operation: 'run_reconciliation', input }
+    });
+
+    return summary;
+  }
+
   async run(input: RunReconciliationInput, context: RequestContext): Promise<RunReconciliationSummary> {
     const job = await jobsService.startJob({ jobName: 'reconciliation_run', metadata: input }, context);
     const summary: RunReconciliationSummary = {
