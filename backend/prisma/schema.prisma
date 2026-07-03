@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum FinancialTitleStatus {
+  PENDING
+  OPEN
+  PAID
+  OVERDUE
+  CANCELED
+  DELETED
+}
+
+enum GatewayProvider {
+  REDE
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+enum RawPayloadStatus {
+  RECEIVED
+  PROCESSED
+  ERROR
+  IGNORED
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELED
+}
+
+enum ApiLogDirection {
+  INBOUND
+  OUTBOUND
+}
+
+model Role {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique
+  description String?
+  metadata    Json      @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  roleId       String?    @db.Uuid
+  name         String
+  email        String     @unique
+  passwordHash String?
+  status       UserStatus @default(ACTIVE)
+  metadata     Json       @default("{}")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+  role         Role?      @relation(fields: [roleId], references: [id])
+
+  @@index([roleId])
+  @@index([status])
+  @@map("users")
+}
+
+model FinancialTitle {
+  id            String               @id @default(uuid()) @db.Uuid
+  titleNumber   String
+  customerName  String?
+  document      String?
+  amount        Decimal              @db.Decimal(14, 2)
+  dueDate       DateTime
+  paidAt        DateTime?
+  status        FinancialTitleStatus @default(PENDING)
+  gatewayRef    String?
+  metadata      Json                 @default("{}")
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  deletedAt     DateTime?
+
+  @@index([titleNumber])
+  @@index([document])
+  @@index([amount])
+  @@index([dueDate])
+  @@index([status])
+  @@map("financial_titles")
+}
+
+model GatewayIntegration {
+  id          String            @id @default(uuid()) @db.Uuid
+  provider    GatewayProvider
+  name        String
+  status      IntegrationStatus @default(INACTIVE)
+  baseUrl     String?
+  metadata    Json              @default("{}")
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+  rawPayloads RawPayload[]
+  apiLogs     ApiLog[]
+
+  @@unique([provider, name])
+  @@index([provider])
+  @@index([status])
+  @@map("gateway_integrations")
+}
+
+model RawPayload {
+  id                   String             @id @default(uuid()) @db.Uuid
+  gatewayIntegrationId String?            @db.Uuid
+  provider             GatewayProvider
+  externalId           String?
+  source               String
+  payloadHash          String             @unique
+  payload              Json
+  status               RawPayloadStatus   @default(RECEIVED)
+  receivedAt           DateTime           @default(now())
+  processedAt          DateTime?
+  metadata             Json               @default("{}")
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  gatewayIntegration   GatewayIntegration? @relation(fields: [gatewayIntegrationId], references: [id])
+
+  @@index([gatewayIntegrationId])
+  @@index([provider])
+  @@index([externalId])
+  @@index([status])
+  @@index([receivedAt])
+  @@map("raw_payloads")
+}
+
+model AuditEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  entity        String
+  entityId      String
+  action        String
+  userId        String?  @db.Uuid
+  origin        String
+  occurredAt    DateTime @default(now())
+  previousValue Json?
+  newValue      Json?
+  justification String?
+  ipAddress     String?
+  userAgent     String?
+  metadata      Json     @default("{}")
+  eventHash     String   @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([occurredAt])
+  @@map("audit_events")
+}
+
+model JobExecution {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  status      JobStatus @default(PENDING)
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  errorMessage String?
+  metadata    Json      @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([name])
+  @@index([status])
+  @@index([startedAt])
+  @@map("job_executions")
+}
+
+model ApiLog {
+  id                   String           @id @default(uuid()) @db.Uuid
+  gatewayIntegrationId String?          @db.Uuid
+  direction            ApiLogDirection
+  method               String
+  endpoint             String
+  statusCode           Int?
+  requestHash          String?
+  responseHash         String?
+  requestPayload       Json?
+  responsePayload      Json?
+  errorMessage         String?
+  durationMs           Int?
+  metadata             Json             @default("{}")
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  gatewayIntegration   GatewayIntegration? @relation(fields: [gatewayIntegrationId], references: [id])
+
+  @@index([gatewayIntegrationId])
+  @@index([direction])
+  @@index([endpoint])
+  @@index([statusCode])
+  @@index([createdAt])
+  @@map("api_logs")
+}
+
