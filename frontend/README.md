@@ -14,6 +14,7 @@ Por padrao, o frontend espera a API em `NEXT_PUBLIC_API_URL=http://localhost:300
 
 ## Rotas do painel
 
+- `/login` - autenticacao do usuario.
 - `/dashboard` - resumo operacional de titulos, recebiveis e conciliacoes.
 - `/titulos` - listagem paginada de titulos financeiros com filtros.
 - `/titulos/novo` - cadastro manual de titulo financeiro.
@@ -35,4 +36,4 @@ npm run build
 npm run lint
 ```
 
-O lint usa a configuracao `next/core-web-vitals`.
+O lint usa ESLint 9 com `eslint-config-next` em `eslint.config.mjs`.

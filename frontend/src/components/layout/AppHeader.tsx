@@ -1,6 +1,9 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { LogOut } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { Button } from '@/components/ui/Button';
 
 const titles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -17,6 +20,7 @@ const titles: Record<string, string> = {
 
 export function AppHeader() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   const title = titles[pathname] ?? (pathname.startsWith('/titulos/') ? 'Título financeiro' : 'FIP Core');
 
   return (
@@ -26,7 +30,14 @@ export function AppHeader() {
           <h1 className="text-lg font-semibold text-slate-950">{title}</h1>
           <p className="text-xs text-slate-500">Operação financeira e rastreabilidade</p>
         </div>
-        <div className="hidden rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-600 sm:block">Operador MVP</div>
+        <div className="flex items-center gap-2">
+          <div className="hidden rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-600 sm:block">
+            {user?.name ?? 'Operador'}
+          </div>
+          <Button variant="ghost" onClick={logout} title="Sair">
+            <LogOut size={16} />
+          </Button>
+        </div>
       </div>
     </header>
   );

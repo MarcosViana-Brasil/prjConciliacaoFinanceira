@@ -15,22 +15,25 @@ import {
   ShieldCheck,
   TriangleAlert
 } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { hasAnyRole } from '@/lib/auth-storage';
 
 const items = [
-  { href: '/dashboard', label: 'Dashboard', icon: Gauge },
-  { href: '/titulos', label: 'Títulos', icon: FileText },
-  { href: '/rede/transacoes', label: 'Transações Rede', icon: Activity },
-  { href: '/rede/recebiveis', label: 'Recebíveis Rede', icon: Landmark },
-  { href: '/conciliacao', label: 'Conciliação', icon: Scale },
-  { href: '/divergencias', label: 'Divergências', icon: TriangleAlert },
-  { href: '/auditoria', label: 'Auditoria', icon: ShieldCheck },
-  { href: '/payloads', label: 'Payloads', icon: Database },
-  { href: '/jobs', label: 'Jobs', icon: FileClock },
-  { href: '/configuracoes', label: 'Configurações', icon: Settings }
+  { href: '/dashboard', label: 'Dashboard', icon: Gauge, roles: ['FINANCEIRO', 'AUDITOR', 'SOMENTE_LEITURA'] },
+  { href: '/titulos', label: 'Títulos', icon: FileText, roles: ['FINANCEIRO', 'AUDITOR', 'SOMENTE_LEITURA'] },
+  { href: '/rede/transacoes', label: 'Transações Rede', icon: Activity, roles: ['FINANCEIRO', 'AUDITOR', 'SOMENTE_LEITURA'] },
+  { href: '/rede/recebiveis', label: 'Recebíveis Rede', icon: Landmark, roles: ['FINANCEIRO', 'AUDITOR', 'SOMENTE_LEITURA'] },
+  { href: '/conciliacao', label: 'Conciliação', icon: Scale, roles: ['FINANCEIRO', 'AUDITOR', 'SOMENTE_LEITURA'] },
+  { href: '/divergencias', label: 'Divergências', icon: TriangleAlert, roles: ['FINANCEIRO', 'AUDITOR', 'SOMENTE_LEITURA'] },
+  { href: '/auditoria', label: 'Auditoria', icon: ShieldCheck, roles: ['AUDITOR'] },
+  { href: '/payloads', label: 'Payloads', icon: Database, roles: ['FINANCEIRO', 'AUDITOR'] },
+  { href: '/jobs', label: 'Jobs', icon: FileClock, roles: ['FINANCEIRO', 'AUDITOR'] },
+  { href: '/configuracoes', label: 'Configurações', icon: Settings, roles: ['ADMIN'] }
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-200 bg-white lg:block">
@@ -44,7 +47,7 @@ export function AppSidebar() {
         </div>
       </div>
       <nav className="space-y-1 p-3">
-        {items.map((item) => {
+        {items.filter((item) => hasAnyRole(user, item.roles)).map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (

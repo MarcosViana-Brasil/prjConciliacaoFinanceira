@@ -46,6 +46,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://fip_user:change_me@postgres:5432/fip_core?schema=public}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3100}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-dev-only-change-this-secret-with-at-least-32-chars}
+      AUTH_TOKEN_TTL_SECONDS: ${AUTH_TOKEN_TTL_SECONDS:-28800}
       ADMIN_NAME: ${ADMIN_NAME:-FIP Admin}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change_me}

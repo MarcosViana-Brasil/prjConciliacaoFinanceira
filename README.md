@@ -8,6 +8,24 @@ Fundacao tecnica do FIP Core MVP, uma aplicacao de conciliacao financeira prepar
 - Frontend: Next.js, React, TypeScript, TailwindCSS
 - Banco: PostgreSQL
 - Infra local: Docker Compose, PgAdmin
+- Jobs: node-cron, runner interno e historico em PostgreSQL
+
+## Status dos Prompts Implementados
+
+Este repositorio ja contempla os incrementos principais do MVP FIP Core:
+
+- Fundacao tecnica: monorepo com `backend/`, `frontend/`, Docker Compose, PostgreSQL, PgAdmin, Prisma, scripts de subida e documentacao base.
+- Backend modular: Fastify com envelope padrao de resposta, tratamento centralizado de erros, validacoes Zod, logger Pino, Prisma singleton e separacao controller/service/repository.
+- Usuarios e perfis: cadastro, listagem, atualizacao, soft delete, perfis `ADMIN`, `FINANCEIRO`, `AUDITOR` e `SOMENTE_LEITURA`.
+- Auditoria e rastreabilidade: `audit_events`, logs tecnicos, payloads brutos, hashes, mascaramento de dados sensiveis e justificativas em acoes criticas.
+- Financeiro interno: CRUD/importacao de titulos financeiros, status, filtros, soft delete, baixa manual, cancelamento e restauracao.
+- Gateway Rede: cliente configuravel, mocks controlados, importacao de transacoes e recebiveis, persistencia de payload bruto, normalizacao e upsert idempotente.
+- Conciliacao: motor de score, matching automatico, divergencias, revisao manual, rejeicao e reversao auditada.
+- Painel frontend: dashboard, titulos, Rede, conciliacao, divergencias, auditoria, payloads, jobs e configuracoes.
+- Jobs e reprocessamento: scheduler, runner generico, lock simples, jobs manuais/agendados, reprocessamento de payload, job history e integracao com o painel.
+- Dados demo: seed idempotente para popular o painel com titulos, transacoes, recebiveis, conciliacoes, divergencia, payloads, job e auditoria.
+- Autenticacao e acesso: login com token Bearer, sessao no frontend, guard de rotas e controle basico por perfis.
+- Seguranca de dependencias: revisao de `npm audit` no backend/frontend, upgrades pontuais sem `npm audit fix --force` e lockfiles atualizados.
 
 ## Pre-requisitos
 
@@ -44,6 +62,12 @@ Atalhos uteis:
 
 O script cria `.env` se estiver ausente, sobe Postgres/PgAdmin, aplica migrations, executa seed inicial e deixa backend/frontend disponiveis.
 
+Se voce adicionou novas variaveis no `docker-compose.yml`, recrie o servico afetado para o Docker receber o novo environment:
+
+```bash
+docker compose up -d backend frontend
+```
+
 ## Acessos
 
 - Frontend: http://localhost:3100
@@ -62,6 +86,8 @@ O painel Next.js fica em `frontend/` e entrega as telas iniciais do fluxo financ
 - `/rede/transacoes` e `/rede/recebiveis` para dados normalizados da Rede e importacao mockada/controlada.
 - `/conciliacao`, `/conciliacao/[id]` e `/divergencias` para execucao, revisao e decisao manual de conciliacoes.
 - `/auditoria`, `/payloads`, `/jobs` e `/configuracoes` para rastreabilidade e operacao.
+- `/jobs` permite disparar importacao Rede e conciliacao.
+- `/payloads` permite visualizar JSON bruto e solicitar reprocessamento com justificativa.
 
 Ao rodar fora do Docker, configure `frontend/.env.local` com `NEXT_PUBLIC_API_URL=http://localhost:3001`. Pelo Compose, use a variavel raiz `NEXT_PUBLIC_API_URL=http://localhost:3101`.
 
@@ -93,6 +119,7 @@ Antes de executar o seed, configure no `.env` do backend ou no `.env` raiz:
 ADMIN_NAME=FIP Admin
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=troque_esta_senha
+AUTH_JWT_SECRET=troque_por_um_segredo_com_32_caracteres_ou_mais
 ```
 
 O seed cria os perfis `ADMIN`, `FINANCEIRO`, `AUDITOR` e `SOMENTE_LEITURA`, alem do usuario administrador inicial. A senha nao fica hardcoded no codigo.
@@ -102,6 +129,8 @@ O seed tambem inclui uma carga demo idempotente para visualizacao do painel: tit
 ```bash
 docker compose exec backend npm run prisma:seed
 ```
+
+Por ser idempotente, o comando pode ser executado novamente sem duplicar a carga demo principal.
 
 ## Rodar fora do Docker
 
@@ -123,9 +152,60 @@ npm install
 npm run dev
 ```
 
+## Validacao
+
+Backend:
+
+```bash
+cd backend
+npm run lint
+npm test
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run build
+npm run lint
+```
+
+Observacao: o build do frontend executa type-check e compilacao. O lint usa ESLint 9 com `eslint-config-next` em `frontend/eslint.config.mjs`.
+
+## Seguranca de Dependencias
+
+A revisao de vulnerabilidades foi feita com `npm audit` em `backend/` e `frontend/`, sem uso de `npm audit fix --force`.
+
+Atualizacoes aplicadas:
+
+- Backend: `fastify@5.9.0`, `@fastify/cors@11.2.0` e `node-cron@4.5.0`.
+- Frontend: `next@16.2.10`, `eslint@9.39.2`, `eslint-config-next@16.2.10` e `postcss@8.5.10`.
+- Frontend: `overrides.next.postcss` fixa o `postcss` transiente do Next em `8.5.10`, porque o pacote ainda declara uma versao vulneravel no grafo padrao.
+
+Comandos de conferencia:
+
+```bash
+cd backend
+npm audit
+npm run lint
+npm test
+
+cd ../frontend
+npm audit
+npm run lint
+npm run build
+```
+
 ## Rotas Backend MVP
 
 Todas as respostas seguem o envelope padrao `{ success, data, message }` ou `{ success: false, error }`. Rotas paginadas aceitam `page` e `limit` com limite maximo de 100.
+
+Autenticacao:
+
+- `POST /api/auth/login` - autentica usuario ativo por e-mail e senha e retorna token.
+- `GET /api/auth/me` - retorna usuario autenticado.
+- Rotas `/api/*`, exceto login, exigem `Authorization: Bearer <token>`.
+- Auditoria usa o usuario autenticado quando o token e valido.
 
 - `GET /health` - health check do backend.
 - `GET /api/users` - lista usuarios com `search` e `status`.
@@ -168,10 +248,26 @@ Todas as respostas seguem o envelope padrao `{ success, data, message }` ou `{ s
 - `POST /api/jobs/import-rede-receivables/run` - executa manualmente o job de importacao de recebiveis Rede.
 - `POST /api/jobs/reconciliation/run` - executa manualmente o job de conciliacao automatica.
 - `POST /api/jobs/reprocess-payload/:rawPayloadId` - reprocessa payload bruto com justificativa obrigatoria.
-- `GET /api/settings` - lista configuracoes sem expor valores sensiveis.
-- `PUT /api/settings/:key` - cria ou atualiza configuracao e registra auditoria.
+- `GET /api/settings` - lista configuracoes sem expor valores sensiveis, restrita a `ADMIN`.
+- `PUT /api/settings/:key` - cria ou atualiza configuracao e registra auditoria, restrita a `ADMIN`.
 
-Enquanto a autenticacao completa nao existe, as acoes auditadas aceitam o header temporario `x-user-id`. Sem esse header, a auditoria e registrada como operacao de sistema.
+Perfis atuais:
+
+- `ADMIN`: acesso total e administracao de usuarios/configuracoes.
+- `FINANCEIRO`: operacao financeira, importacoes, conciliacao, jobs e reprocessamento.
+- `AUDITOR`: consultas de auditoria, payloads, jobs e dados financeiros em modo leitura.
+- `SOMENTE_LEITURA`: consultas operacionais basicas.
+
+Exemplo de login:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "change_me"
+}
+```
+
+Use os valores definidos em `ADMIN_EMAIL` e `ADMIN_PASSWORD` no seed do ambiente.
 
 Exemplo de criacao de titulo financeiro:
 
@@ -289,10 +385,38 @@ curl -X POST http://localhost:3101/api/jobs/reprocess-payload/{rawPayloadId} \
   -d "{\"justification\":\"Reprocessamento solicitado apos ajuste no normalizador.\"}"
 ```
 
+O scheduler nao inicia em `NODE_ENV=test`. No ambiente Docker, os jobs agendados sao habilitados pelas variaveis `JOBS_ENABLED` e `JOB_*_ENABLED`.
+
+## Estrutura Principal
+
+```text
+backend/src/modules/
+├── users
+├── financeiro
+├── gateways/rede
+├── conciliacao
+├── auditoria
+├── payloads
+├── api-logs
+├── jobs
+└── settings
+
+frontend/src/app/
+├── dashboard
+├── titulos
+├── rede
+├── conciliacao
+├── divergencias
+├── auditoria
+├── payloads
+├── jobs
+└── configuracoes
+```
+
 ## Proximos passos
 
-1. Criar autenticacao basica e perfis de acesso.
-2. Implementar cadastro e importacao de titulos financeiros.
-3. Criar contrato comum para gateways.
-4. Implementar mocks e persistencia de payloads brutos da Rede.
-5. Evoluir o motor de conciliacao com score, auditoria e divergencias.
+1. Criar relatorios e exportacao Excel.
+2. Ampliar testes de integracao/e2e cobrindo APIs, auth, jobs e fluxos do painel.
+3. Evoluir scheduler para BullMQ/Redis quando o MVP exigir fila distribuida.
+4. Adicionar template documentado para novos gateways alem da Rede.
+5. Refinar permissoes granulares por acao e tela conforme regras de negocio reais.

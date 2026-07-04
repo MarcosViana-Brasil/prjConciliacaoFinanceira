@@ -1,4 +1,4 @@
-import { createHash, randomBytes, scryptSync } from 'node:crypto';
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
 function sortValue(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -30,4 +30,17 @@ export function hashPassword(password: string): string {
   const hash = scryptSync(password, salt, 64).toString('hex');
 
   return `scrypt:${salt}:${hash}`;
+}
+
+export function verifyPassword(password: string, passwordHash: string): boolean {
+  const [algorithm, salt, hash] = passwordHash.split(':');
+
+  if (algorithm !== 'scrypt' || !salt || !hash) {
+    return false;
+  }
+
+  const actual = Buffer.from(scryptSync(password, salt, 64).toString('hex'), 'utf8');
+  const expected = Buffer.from(hash, 'utf8');
+
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
 }

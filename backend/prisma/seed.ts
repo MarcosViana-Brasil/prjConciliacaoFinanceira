@@ -519,6 +519,7 @@ async function main() {
     where: { email: adminEmail },
     update: {
       name: adminName,
+      passwordHash: hashPassword(adminPassword),
       status: 'ACTIVE',
       deletedAt: null,
     },

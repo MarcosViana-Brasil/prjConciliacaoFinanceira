@@ -15,6 +15,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  AUTH_JWT_SECRET: z.string().min(32).default('dev-only-change-this-secret-with-at-least-32-chars'),
+  AUTH_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(8 * 60 * 60),
   REDE_BASE_URL: z.string().url().default('https://api.userede.com.br'),
   REDE_CLIENT_ID: z.string().optional(),
   REDE_CLIENT_SECRET: z.string().optional(),
