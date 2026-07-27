@@ -1,8 +1,9 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { LogOut } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { ThemeToggleButton } from '@/components/layout/ThemeProvider';
+import { ZoomLogo } from '@/components/layout/ZoomLogo';
 import { Button } from '@/components/ui/Button';
 
 const titles: Record<string, string> = {
@@ -24,18 +25,24 @@ export function AppHeader() {
   const title = titles[pathname] ?? (pathname.startsWith('/titulos/') ? 'Título financeiro' : 'FIP Core');
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="flex h-16 items-center justify-between px-4 lg:px-6">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-950">{title}</h1>
-          <p className="text-xs text-slate-500">Operação financeira e rastreabilidade</p>
+    <header className="sticky top-0 z-30 bg-transparent px-4 pt-4 lg:px-5">
+      <div className="flex min-h-[70px] items-center justify-between rounded-xl border border-[var(--app-border)] bg-[var(--app-header)] px-4 shadow-sm">
+        <div className="flex min-w-0 items-center gap-5">
+          <div className="hidden sm:block">
+            <ZoomLogo compact />
+          </div>
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-bold text-[#03437d]">Conciliação Financeira Control Center</h1>
+            <p className="truncate text-xs font-medium text-[var(--app-muted)]">{title} · operação, testes e rastreabilidade</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="hidden rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-600 sm:block">
+          <ThemeToggleButton />
+          <div className="hidden rounded-md border border-[var(--app-border)] bg-[var(--app-panel)] px-3 py-2 text-xs font-medium text-[var(--app-subtle)] md:block">
             {user?.name ?? 'Operador'}
           </div>
-          <Button variant="ghost" onClick={logout} title="Sair">
-            <LogOut size={16} />
+          <Button onClick={logout} title="Sair">
+            Sair
           </Button>
         </div>
       </div>

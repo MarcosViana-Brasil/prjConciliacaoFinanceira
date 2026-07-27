@@ -84,7 +84,7 @@ function JobActions() {
       </div>
       <Modal open={Boolean(job)} title="Executar job" onClose={() => setJob(undefined)}>
         <div className="grid gap-3">
-          {error ? <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div> : null}
+          {error ? <div className="rounded-md border border-[var(--app-danger-border)] bg-[var(--app-danger-bg)] p-3 text-sm text-[var(--app-danger-text)]">{error}</div> : null}
           <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
           <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
           <Button disabled={loading} onClick={submit}>

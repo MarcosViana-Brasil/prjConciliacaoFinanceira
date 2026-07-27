@@ -24,6 +24,7 @@ enum FinancialTitleStatus {
 }
 
 enum GatewayProvider {
+  ITAU
   REDE
   STONE
   CIELO
@@ -63,6 +64,29 @@ enum ReceivableStatus {
   CANCELED
   ANTICIPATED
   ADJUSTED
+  UNKNOWN
+}
+
+enum ItauBoletoStatus {
+  OPEN
+  IN_PAYMENT
+  PAID
+  CANCELED
+  OVERDUE
+  UNKNOWN
+}
+
+enum ItauBoletoMovementType {
+  ENTRY
+  LIQUIDATION
+  CANCELATION
+  UNKNOWN
+}
+
+enum ItauBoletoChargeType {
+  BOLETO
+  BOLECODE
+  DISCOUNTED_BOLETO
   UNKNOWN
 }
 
@@ -234,6 +258,8 @@ model GatewayIntegration {
   deletedAt      DateTime?
   rawPayloads    RawPayload[]
   redeTransactions RedeTransaction[]
+  itauBoletos    ItauBoleto[]
+  itauBoletoMovements ItauBoletoMovement[]
   apiLogs        ApiLog[]
 
   @@unique([provider, name])
@@ -264,6 +290,8 @@ model RawPayload {
   integration     GatewayIntegration? @relation(fields: [integrationId], references: [id])
   redeTransactions RedeTransaction[]
   redeReceivables RedeReceivable[]
+  itauBoletos    ItauBoleto[]
+  itauBoletoMovements ItauBoletoMovement[]
 
   @@index([integrationId])
   @@index([provider])
@@ -350,6 +378,98 @@ model RedeReceivable {
   @@index([actualPaymentDate])
   @@index([status])
   @@map("rede_receivables")
+}
+
+model ItauBoleto {
+  id                         String            @id @default(uuid()) @db.Uuid
+  rawPayloadId               String?           @db.Uuid
+  integrationId              String?           @db.Uuid
+  boletoId                   String?
+  beneficiaryId              String
+  walletCode                 String?
+  ourNumber                  String
+  ourNumberDigit             String?
+  yourNumber                 String?
+  marketIdentifier           String?
+  barcode                    String?
+  digitableLine              String?
+  payerName                  String?
+  payerDocument              String?
+  issueDate                  DateTime?
+  dueDate                    DateTime?
+  paymentLimitDate           DateTime?
+  amount                     Decimal?          @db.Decimal(14, 2)
+  paidAmount                 Decimal?          @db.Decimal(14, 2)
+  paymentDate                DateTime?
+  status                     ItauBoletoStatus  @default(UNKNOWN)
+  chargeType                 ItauBoletoChargeType @default(UNKNOWN)
+  hasPixQrCode               Boolean           @default(false)
+  txid                       String?
+  pixEmv                     String?
+  metadata                   Json              @default("{}")
+  createdAt                  DateTime          @default(now())
+  updatedAt                  DateTime          @updatedAt
+  integration                GatewayIntegration? @relation(fields: [integrationId], references: [id])
+  rawPayload                 RawPayload?       @relation(fields: [rawPayloadId], references: [id])
+
+  @@unique([beneficiaryId, walletCode, ourNumber])
+  @@index([rawPayloadId])
+  @@index([integrationId])
+  @@index([boletoId])
+  @@index([ourNumber])
+  @@index([yourNumber])
+  @@index([marketIdentifier])
+  @@index([barcode])
+  @@index([dueDate])
+  @@index([paymentDate])
+  @@index([status])
+  @@index([chargeType])
+  @@map("itau_boletos")
+}
+
+model ItauBoletoMovement {
+  id                         String                  @id @default(uuid()) @db.Uuid
+  rawPayloadId               String?                 @db.Uuid
+  integrationId              String?                 @db.Uuid
+  movementDate               DateTime
+  titleWalletMovementDate    DateTime?
+  inclusionDate              DateTime?
+  dueDate                    DateTime?
+  agency                     String?
+  account                    String?
+  beneficiaryAccountDigit    String?
+  beneficiaryId              String?
+  walletCode                 String?
+  ourNumber                  String
+  ourNumberDigit             String?
+  yourNumber                 String?
+  titleSequence              Int?
+  payerName                  String?
+  receiverAgency             String?
+  statusCode                 String?
+  movementType               ItauBoletoMovementType  @default(UNKNOWN)
+  chargeType                 ItauBoletoChargeType    @default(UNKNOWN)
+  amount                     Decimal?                @db.Decimal(14, 2)
+  netAmount                  Decimal?                @db.Decimal(14, 2)
+  increaseAmount             Decimal?                @db.Decimal(14, 2)
+  decreaseAmount             Decimal?                @db.Decimal(14, 2)
+  hasCreditSplit             Boolean                 @default(false)
+  metadata                   Json                    @default("{}")
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime                @updatedAt
+  integration                GatewayIntegration?     @relation(fields: [integrationId], references: [id])
+  rawPayload                 RawPayload?             @relation(fields: [rawPayloadId], references: [id])
+
+  @@unique([movementDate, walletCode, ourNumber, yourNumber, movementType, titleSequence])
+  @@index([rawPayloadId])
+  @@index([integrationId])
+  @@index([movementDate])
+  @@index([ourNumber])
+  @@index([yourNumber])
+  @@index([walletCode])
+  @@index([movementType])
+  @@index([chargeType])
+  @@map("itau_boleto_movements")
 }
 
 model Reconciliation {

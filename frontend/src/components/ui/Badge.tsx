@@ -2,15 +2,15 @@ import { formatStatusLabel } from '@/lib/formatters';
 
 function colorFor(value: string) {
   if (['RECONCILED', 'MATCHED_AUTOMATICALLY', 'MATCHED_MANUALLY', 'PAID', 'SUCCESS', 'PROCESSED'].includes(value)) {
-    return 'border-emerald-200 bg-emerald-50 text-emerald-800';
+    return 'status-success';
   }
   if (['DIVERGENT', 'ERROR', 'FAILED', 'CANCELED', 'REVERSED', 'HIGH', 'CRITICAL'].includes(value)) {
-    return 'border-rose-200 bg-rose-50 text-rose-800';
+    return 'status-danger';
   }
   if (['PARTIAL_SUCCESS', 'PARTIALLY_PAID', 'MEDIUM', 'PENDING', 'RUNNING'].includes(value)) {
-    return 'border-amber-200 bg-amber-50 text-amber-800';
+    return 'status-warning';
   }
-  return 'border-slate-200 bg-slate-50 text-slate-700';
+  return 'status-neutral';
 }
 
 export function Badge({ value }: { value?: string | null }) {

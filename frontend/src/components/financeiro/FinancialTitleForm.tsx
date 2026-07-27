@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { api } from '@/lib/api';
 import { gatewayProviderOptions } from '@/lib/constants';
-import { getErrorMessage } from '@/lib/errors';
+import { ApiError, getErrorMessage } from '@/lib/errors';
 
 type FormValues = {
   titleNumber: string;
@@ -30,6 +30,38 @@ type FormValues = {
   transactionId: string;
   justification: string;
 };
+
+type ValidationDetail = {
+  path?: string;
+  message?: string;
+};
+
+const fieldLabels: Record<keyof FormValues, string> = {
+  titleNumber: 'Número do título',
+  externalId: 'ID externo',
+  customerName: 'Cliente',
+  customerDocument: 'Documento',
+  orderNumber: 'Pedido',
+  installmentNumber: 'Parcela',
+  totalInstallments: 'Total de parcelas',
+  grossAmount: 'Valor bruto',
+  netAmountExpected: 'Valor líquido esperado',
+  dueDate: 'Vencimento',
+  issueDate: 'Emissão',
+  gatewayProvider: 'Gateway',
+  nsu: 'NSU',
+  authorizationCode: 'Autorização',
+  tid: 'TID',
+  transactionId: 'Transaction ID',
+  justification: 'Justificativa'
+};
+
+const apiFieldPaths: Record<string, keyof FormValues> = Object.keys(fieldLabels).reduce(
+  (acc, field) => ({ ...acc, [field]: field as keyof FormValues }),
+  {} as Record<string, keyof FormValues>
+);
+
+const moneyPattern = /^\d+([,.]\d{1,2})?$/;
 
 const initialValues: FormValues = {
   titleNumber: '',
@@ -69,7 +101,20 @@ export function FinancialTitleForm() {
     if (!values.titleNumber.trim()) nextErrors.titleNumber = 'Informe o número do título';
     if (!values.customerName.trim()) nextErrors.customerName = 'Informe o cliente';
     if (!values.grossAmount.trim()) nextErrors.grossAmount = 'Informe o valor bruto';
+    if (values.grossAmount.trim() && !moneyPattern.test(values.grossAmount.trim())) {
+      nextErrors.grossAmount = 'Informe um valor monetário válido, como 120,00';
+    }
+    if (values.netAmountExpected.trim() && !moneyPattern.test(values.netAmountExpected.trim())) {
+      nextErrors.netAmountExpected = 'Informe um valor monetário válido, como 100,00';
+    }
     if (!values.dueDate) nextErrors.dueDate = 'Informe o vencimento';
+    if (
+      values.installmentNumber &&
+      values.totalInstallments &&
+      Number(values.totalInstallments) < Number(values.installmentNumber)
+    ) {
+      nextErrors.totalInstallments = 'Total de parcelas deve ser maior ou igual à parcela';
+    }
     if (!values.justification.trim()) nextErrors.justification = 'Informe a justificativa';
 
     setErrors(nextErrors);
@@ -81,7 +126,14 @@ export function FinancialTitleForm() {
       await api.post('/financial-titles', sanitizePayload(values));
       router.push('/titulos');
     } catch (error) {
-      setSubmitError(getErrorMessage(error));
+      const apiErrors = getApiFieldErrors(error);
+
+      if (Object.keys(apiErrors).length) {
+        setErrors((current) => ({ ...current, ...apiErrors }));
+        setSubmitError('Corrija os campos destacados e tente novamente.');
+      } else {
+        setSubmitError(getErrorMessage(error));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -91,7 +143,7 @@ export function FinancialTitleForm() {
     <Card>
       <CardBody>
         <form className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit}>
-          {submitError ? <div className="md:col-span-2 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{submitError}</div> : null}
+          {submitError ? <div className="md:col-span-2 rounded-md border border-[var(--app-danger-border)] bg-[var(--app-danger-bg)] p-3 text-sm text-[var(--app-danger-text)]">{submitError}</div> : null}
           <Field label="Número do título" error={errors.titleNumber}>
             <Input value={values.titleNumber} onChange={(event) => updateField('titleNumber', event.target.value)} />
           </Field>
@@ -110,7 +162,7 @@ export function FinancialTitleForm() {
           <Field label="Valor bruto" error={errors.grossAmount}>
             <Input value={values.grossAmount} onChange={(event) => updateField('grossAmount', event.target.value)} />
           </Field>
-          <Field label="Valor líquido esperado">
+          <Field label="Valor líquido esperado" error={errors.netAmountExpected}>
             <Input value={values.netAmountExpected} onChange={(event) => updateField('netAmountExpected', event.target.value)} />
           </Field>
           <Field label="Vencimento" error={errors.dueDate}>
@@ -163,16 +215,45 @@ function sanitizePayload(values: FormValues) {
         if (['installmentNumber', 'totalInstallments'].includes(key)) {
           return [key, value ? Number(value) : undefined];
         }
+        if (['grossAmount', 'netAmountExpected'].includes(key)) {
+          return [key, value.trim() ? value.trim().replace(',', '.') : undefined];
+        }
         return [key, value.trim() || undefined];
       })
       .filter(([, value]) => value !== undefined)
   );
 }
 
+function getApiFieldErrors(error: unknown) {
+  const fieldErrors: Partial<Record<keyof FormValues, string>> = {};
+  if (!(error instanceof ApiError) || !Array.isArray(error.details)) return fieldErrors;
+
+  for (const detail of error.details as ValidationDetail[]) {
+    const field = detail.path ? apiFieldPaths[detail.path] : undefined;
+    if (!field) continue;
+
+    fieldErrors[field] = formatApiFieldMessage(field, detail.message);
+  }
+
+  return fieldErrors;
+}
+
+function formatApiFieldMessage(field: keyof FormValues, message?: string) {
+  if (message === 'Valor monetario invalido') {
+    return `${fieldLabels[field]} deve ser um valor monetário válido, como 120,00`;
+  }
+
+  if (message?.includes('Required') || message?.includes('Invalid input')) {
+    return `${fieldLabels[field]} inválido`;
+  }
+
+  return message ? `${fieldLabels[field]}: ${message}` : `${fieldLabels[field]} inválido`;
+}
+
 function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
   return (
     <label className="grid gap-1 text-sm">
-      <span className="font-medium text-slate-700">{label}</span>
+      <span className="font-medium text-[var(--app-subtle)]">{label}</span>
       {children}
       {error ? <span className="text-xs text-rose-700">{error}</span> : null}
     </label>

@@ -4,7 +4,7 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100 ${props.className ?? ''}`}
+      className={`h-10 w-full rounded-md border border-[var(--app-border-strong)] bg-[var(--app-input)] px-3 text-sm text-[var(--app-text)] outline-none placeholder:text-[var(--app-muted)] focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20 ${props.className ?? ''}`}
     />
   );
 }

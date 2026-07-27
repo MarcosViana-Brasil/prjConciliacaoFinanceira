@@ -47,6 +47,28 @@ const demoIds = {
   jobSeed: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
 };
 
+const extraDemoTitles = [
+  { index: 1, dueDate: '2026-08-17', grossAmount: '184.90', netAmount: '178.43', status: 'RECONCILED', customerName: 'Padaria Central Norte' },
+  { index: 2, dueDate: '2026-08-18', grossAmount: '329.70', netAmount: '318.16', status: 'OPEN', customerName: 'Clínica Vida Plena' },
+  { index: 3, dueDate: '2026-08-19', grossAmount: '512.40', netAmount: '494.47', status: 'RECONCILED', customerName: 'Auto Posto Bandeira' },
+  { index: 4, dueDate: '2026-08-20', grossAmount: '267.80', netAmount: '258.43', status: 'DIVERGENT', customerName: 'Farmácia Bela Vista' },
+  { index: 5, dueDate: '2026-08-21', grossAmount: '745.20', netAmount: '719.12', status: 'OPEN', customerName: 'Restaurante Paineiras' },
+  { index: 6, dueDate: '2026-08-22', grossAmount: '198.35', netAmount: '191.41', status: 'RECONCILED', customerName: 'Mercado Santa Luzia' },
+  { index: 7, dueDate: '2026-08-23', grossAmount: '432.10', netAmount: '416.98', status: 'OPEN', customerName: 'Academia Movimento' },
+  { index: 8, dueDate: '2026-08-24', grossAmount: '621.90', netAmount: '600.13', status: 'RECONCILED', customerName: 'Loja Horizonte Kids' },
+  { index: 9, dueDate: '2026-08-25', grossAmount: '154.60', netAmount: '149.19', status: 'OPEN', customerName: 'Pet Shop Amigo Fiel' },
+  { index: 10, dueDate: '2026-08-26', grossAmount: '389.45', netAmount: '375.82', status: 'DIVERGENT', customerName: 'Ótica Prisma' },
+  { index: 11, dueDate: '2026-08-27', grossAmount: '802.30', netAmount: '774.22', status: 'RECONCILED', customerName: 'Construtora Ápice' },
+  { index: 12, dueDate: '2026-08-28', grossAmount: '276.15', netAmount: '266.49', status: 'OPEN', customerName: 'Studio Beleza Viva' },
+  { index: 13, dueDate: '2026-08-29', grossAmount: '534.80', netAmount: '516.08', status: 'RECONCILED', customerName: 'Casa das Ferragens' },
+  { index: 14, dueDate: '2026-08-30', grossAmount: '468.25', netAmount: '451.86', status: 'OPEN', customerName: 'Empório das Flores' },
+  { index: 15, dueDate: '2026-08-31', grossAmount: '916.70', netAmount: '884.62', status: 'RECONCILED', customerName: 'Distribuidora Lago Sul' }
+] as const;
+
+function demoUuid(prefix: string, index: number): string {
+  return `${prefix}-0000-4000-8000-${String(index).padStart(12, '0')}`;
+}
+
 async function seedDemoFinancialData(adminUserId: string) {
   const rawTransactionsPayload = {
     provider: 'REDE',
@@ -377,6 +399,137 @@ async function seedDemoFinancialData(adminUserId: string) {
       metadata: { demo: true }
     }
   });
+
+  for (const item of extraDemoTitles) {
+    const padded = String(2000 + item.index);
+    const titleId = demoUuid('10000000', item.index);
+    const transactionId = `REDE-TX-${padded}`;
+    const nsu = `NSU${padded}`;
+    const authorizationCode = `AUTH${padded}`;
+    const tid = `TID${padded}`;
+    const titleStatus = item.status;
+    const shouldCreateRedeData = titleStatus !== 'OPEN';
+    const transactionEntityId = demoUuid('20000000', item.index);
+    const receivableEntityId = demoUuid('30000000', item.index);
+
+    await prisma.financialTitle.upsert({
+      where: { id: titleId },
+      update: {
+        customerName: item.customerName,
+        grossAmount: item.grossAmount,
+        netAmountExpected: item.netAmount,
+        dueDate: new Date(`${item.dueDate}T00:00:00.000Z`),
+        issueDate: new Date('2026-08-10T00:00:00.000Z'),
+        status: titleStatus,
+        gatewayProvider: 'REDE',
+        gatewayReference: shouldCreateRedeData ? transactionId : null,
+        nsu: shouldCreateRedeData ? nsu : null,
+        authorizationCode: shouldCreateRedeData ? authorizationCode : null,
+        tid: shouldCreateRedeData ? tid : null,
+        transactionId: shouldCreateRedeData ? transactionId : null,
+        metadata: { demo: true, batch: 'dashboard_charts', scenario: titleStatus.toLowerCase() }
+      },
+      create: {
+        id: titleId,
+        externalId: `ERP-${padded}`,
+        titleNumber: `TIT-${padded}`,
+        customerName: item.customerName,
+        customerDocument: `445550000001${String(item.index).padStart(2, '0')}`,
+        orderNumber: `PED-${padded}`,
+        installmentNumber: 1,
+        totalInstallments: 1,
+        grossAmount: item.grossAmount,
+        netAmountExpected: item.netAmount,
+        dueDate: new Date(`${item.dueDate}T00:00:00.000Z`),
+        issueDate: new Date('2026-08-10T00:00:00.000Z'),
+        status: titleStatus,
+        gatewayProvider: 'REDE',
+        gatewayReference: shouldCreateRedeData ? transactionId : null,
+        nsu: shouldCreateRedeData ? nsu : null,
+        authorizationCode: shouldCreateRedeData ? authorizationCode : null,
+        tid: shouldCreateRedeData ? tid : null,
+        transactionId: shouldCreateRedeData ? transactionId : null,
+        metadata: { demo: true, batch: 'dashboard_charts', scenario: titleStatus.toLowerCase() }
+      }
+    });
+
+    if (!shouldCreateRedeData) {
+      continue;
+    }
+
+    const gross = Number(item.grossAmount);
+    const net = Number(item.netAmount);
+    const fee = (gross - net).toFixed(2);
+
+    await prisma.redeTransaction.upsert({
+      where: { id: transactionEntityId },
+      update: {
+        rawPayloadId: demoIds.rawTransactions,
+        integrationId: integration.id,
+        grossAmount: item.grossAmount,
+        netAmount: item.netAmount,
+        feeAmount: fee,
+        status: 'CAPTURED',
+        metadata: { demo: true, batch: 'dashboard_charts' }
+      },
+      create: {
+        id: transactionEntityId,
+        rawPayloadId: demoIds.rawTransactions,
+        integrationId: integration.id,
+        transactionId,
+        tid,
+        nsu,
+        authorizationCode,
+        orderNumber: `PED-${padded}`,
+        saleDate: new Date(`${item.dueDate}T10:00:00.000Z`),
+        captureDate: new Date(`${item.dueDate}T10:01:00.000Z`),
+        grossAmount: item.grossAmount,
+        netAmount: item.netAmount,
+        feeAmount: fee,
+        installmentNumber: 1,
+        totalInstallments: 1,
+        brand: item.index % 2 === 0 ? 'MASTERCARD' : 'VISA',
+        paymentMethod: 'CREDIT',
+        status: 'CAPTURED',
+        establishmentCode: 'PV-001',
+        metadata: { demo: true, batch: 'dashboard_charts' }
+      }
+    });
+
+    await prisma.redeReceivable.upsert({
+      where: { id: receivableEntityId },
+      update: {
+        rawPayloadId: demoIds.rawReceivables,
+        redeTransactionId: transactionEntityId,
+        grossAmount: item.grossAmount,
+        netAmount: item.netAmount,
+        feeAmount: fee,
+        status: titleStatus === 'DIVERGENT' ? 'ADJUSTED' : 'PENDING',
+        metadata: { demo: true, batch: 'dashboard_charts' }
+      },
+      create: {
+        id: receivableEntityId,
+        rawPayloadId: demoIds.rawReceivables,
+        redeTransactionId: transactionEntityId,
+        transactionId,
+        nsu,
+        authorizationCode,
+        expectedPaymentDate: new Date(`${item.dueDate}T00:00:00.000Z`),
+        actualPaymentDate: titleStatus === 'DIVERGENT' ? new Date(`${item.dueDate}T00:00:00.000Z`) : null,
+        grossAmount: item.grossAmount,
+        netAmount: item.netAmount,
+        feeAmount: fee,
+        adjustmentAmount: titleStatus === 'DIVERGENT' ? '-1.25' : '0.00',
+        installmentNumber: 1,
+        totalInstallments: 1,
+        status: titleStatus === 'DIVERGENT' ? 'ADJUSTED' : 'PENDING',
+        bankCode: '341',
+        agency: '0001',
+        account: '12345-6',
+        metadata: { demo: true, batch: 'dashboard_charts' }
+      }
+    });
+  }
 
   await prisma.reconciliation.upsert({
     where: { id: demoIds.reconciliationMatched },

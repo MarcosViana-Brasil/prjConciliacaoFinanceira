@@ -57,7 +57,7 @@ export function ResourcePage<T>({
       <CardHeader title={title} action={action} />
       <CardBody>
         {filters ? <div className="mb-4">{filters(query, updateQuery)}</div> : null}
-        {error ? <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div> : null}
+        {error ? <div className="mb-4 rounded-md border border-[var(--app-danger-border)] bg-[var(--app-danger-bg)] p-3 text-sm text-[var(--app-danger-text)]">{error}</div> : null}
         {loading ? <LoadingState /> : items.length ? render(items, reload) : <EmptyState />}
       </CardBody>
       <Pagination pagination={pagination} onPageChange={setPage} />

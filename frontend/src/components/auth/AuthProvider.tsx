@@ -46,11 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   if (!ready) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Carregando...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] text-sm text-[var(--app-muted)]">Carregando...</div>;
   }
 
   if (!session && pathname !== '/login') {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Redirecionando...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] text-sm text-[var(--app-muted)]">Redirecionando...</div>;
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

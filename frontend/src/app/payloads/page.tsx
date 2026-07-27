@@ -66,9 +66,9 @@ function ReprocessModal({ payload, onClose }: { payload?: RawPayload; onClose: (
   return (
     <Modal open={Boolean(payload)} title="Reprocessar payload" onClose={onClose}>
       <div className="grid gap-3">
-        {error ? <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div> : null}
+        {error ? <div className="rounded-md border border-[var(--app-danger-border)] bg-[var(--app-danger-bg)] p-3 text-sm text-[var(--app-danger-text)]">{error}</div> : null}
         <textarea
-          className="min-h-24 rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="min-h-24 rounded-md border border-[var(--app-border-strong)] bg-[var(--app-input)] px-3 py-2 text-sm text-[var(--app-text)] outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20"
           value={justification}
           onChange={(event) => setJustification(event.target.value)}
         />

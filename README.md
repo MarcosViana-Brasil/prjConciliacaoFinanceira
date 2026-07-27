@@ -62,6 +62,18 @@ Atalhos uteis:
 
 O script cria `.env` se estiver ausente, sobe Postgres/PgAdmin, aplica migrations, executa seed inicial e deixa backend/frontend disponiveis.
 
+Para encerrar toda a stack:
+
+```powershell
+.\scripts\stop-system.ps1
+```
+
+O encerramento remove os containers e a rede do Compose, mas preserva os volumes e os dados locais. Para remover tambem os volumes:
+
+```powershell
+.\scripts\stop-system.ps1 -RemoveVolumes
+```
+
 Se voce adicionou novas variaveis no `docker-compose.yml`, recrie o servico afetado para o Docker receber o novo environment:
 
 ```bash
@@ -88,6 +100,8 @@ O painel Next.js fica em `frontend/` e entrega as telas iniciais do fluxo financ
 - `/auditoria`, `/payloads`, `/jobs` e `/configuracoes` para rastreabilidade e operacao.
 - `/jobs` permite disparar importacao Rede e conciliacao.
 - `/payloads` permite visualizar JSON bruto e solicitar reprocessamento com justificativa.
+
+Para a rotina operacional de usuarios financeiros, consulte [Guia de Uso Diario - Conciliacao Rede/Itau](docs/GUIA_USUARIO_CONCILIACAO_REDE.md).
 
 Ao rodar fora do Docker, configure `frontend/.env.local` com `NEXT_PUBLIC_API_URL=http://localhost:3001`. Pelo Compose, use a variavel raiz `NEXT_PUBLIC_API_URL=http://localhost:3101`.
 

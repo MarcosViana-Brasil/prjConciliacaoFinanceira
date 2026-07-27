@@ -5,7 +5,7 @@ import { formatCurrencyBRL, formatDateBR, formatDocument } from '@/lib/formatter
 import type { FinancialTitle } from '@/types/financeiro';
 
 const columns: Column<FinancialTitle>[] = [
-  { key: 'titleNumber', header: 'Título', render: (item) => <Link className="font-medium text-emerald-800" href={`/titulos/${item.id}`}>{item.titleNumber}</Link> },
+  { key: 'titleNumber', header: 'Título', render: (item) => <Link className="font-medium text-[var(--app-accent-strong)] hover:underline" href={`/titulos/${item.id}`}>{item.titleNumber}</Link> },
   { key: 'customerName', header: 'Cliente', render: (item) => item.customerName ?? '-' },
   { key: 'document', header: 'Documento', render: (item) => formatDocument(item.customerDocument) },
   { key: 'amount', header: 'Valor', render: (item) => formatCurrencyBRL(item.grossAmount) },

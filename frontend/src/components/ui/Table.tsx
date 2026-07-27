@@ -8,12 +8,17 @@ export type Column<T> = {
 
 export function Table<T>({ data, columns }: { data: T[]; columns: Column<T>[] }) {
   return (
-    <div className="overflow-x-auto">
+    <div
+      className="max-h-[24.5rem] overflow-auto"
+      role="region"
+      aria-label="Tabela de dados"
+      tabIndex={0}
+    >
       <table className="min-w-full border-separate border-spacing-0 text-sm">
-        <thead>
-          <tr className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+        <thead className="sticky top-0 z-10">
+          <tr className="bg-[var(--app-panel-soft)] text-left text-xs uppercase text-[var(--app-muted)]">
             {columns.map((column) => (
-              <th key={column.key} className="border-b border-slate-200 px-3 py-3 font-semibold">
+              <th key={column.key} className="h-10 border-b border-[var(--app-border)] px-3 py-0 font-semibold">
                 {column.header}
               </th>
             ))}
@@ -21,9 +26,9 @@ export function Table<T>({ data, columns }: { data: T[]; columns: Column<T>[] })
         </thead>
         <tbody>
           {data.map((item, index) => (
-            <tr key={index} className="border-b border-slate-100">
+            <tr key={index} className="border-b border-[var(--app-border)]">
               {columns.map((column) => (
-                <td key={column.key} className="border-b border-slate-100 px-3 py-3 align-top text-slate-700">
+                <td key={column.key} className="h-11 border-b border-[var(--app-border)] px-3 py-0 align-middle text-[var(--app-subtle)]">
                   {column.render(item)}
                 </td>
               ))}

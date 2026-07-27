@@ -3,6 +3,10 @@ import type { GatewayProvider, JobExecution, JobStatus } from '@prisma/client';
 export const JOB_NAMES = {
   importRedeTransactions: 'IMPORT_REDE_TRANSACTIONS',
   importRedeReceivables: 'IMPORT_REDE_RECEIVABLES',
+  importItauBoletos: 'IMPORT_ITAU_BOLETOS',
+  importItauBoletoMovements: 'IMPORT_ITAU_BOLETO_MOVEMENTS',
+  enrichItauBoleto: 'ENRICH_ITAU_BOLETO',
+  reconcileItauBoletoMovements: 'RECONCILE_ITAU_BOLETO_MOVEMENTS',
   runReconciliation: 'RUN_RECONCILIATION',
   reprocessPayload: 'REPROCESS_PAYLOAD',
   cleanupOldLogs: 'CLEANUP_OLD_LOGS'
@@ -68,6 +72,47 @@ export type RunRedeImportJobParams = {
 
 export type RunReconciliationJobParams = RunRedeImportJobParams & {
   gatewayProvider: GatewayProvider;
+};
+
+export type RunImportItauBoletosJobParams = {
+  idBeneficiario: string;
+  seuNumero?: string;
+  nossoNumero?: string;
+  codigoCarteira?: string;
+  codigoBarra?: string;
+  situacao?: string;
+  instrumentoCobranca?: string;
+  dataEntrada?: string;
+  dataEmissao?: string;
+  dataCancelamento?: string;
+  dataVencimento?: string;
+  dataPagamento?: string;
+  view?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type RunImportItauBoletoMovementsJobParams = {
+  francesaId: string;
+  data: string;
+  tipoCobranca?: string;
+  tipoMovimentacao?: string;
+  nossoNumero?: string;
+  seuNumero?: string;
+  numeroCarteira?: string;
+  nomePagador?: string;
+};
+
+export type RunEnrichItauBoletoJobParams = {
+  idBeneficiario: string;
+  codigoCarteira: string;
+  nossoNumero: string;
+  view?: string;
+};
+
+export type RunReconcileItauBoletoMovementsJobParams = {
+  startDate: string;
+  endDate: string;
 };
 
 export type ReprocessPayloadJobParams = {

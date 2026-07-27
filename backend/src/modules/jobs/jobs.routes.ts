@@ -10,6 +10,10 @@ export async function jobsRoutes(app: FastifyInstance) {
   app.get('/jobs/:id', controller.getById.bind(controller));
   app.post('/jobs/import-rede-transactions/run', { preHandler: canOperate }, controller.runImportRedeTransactions.bind(controller));
   app.post('/jobs/import-rede-receivables/run', { preHandler: canOperate }, controller.runImportRedeReceivables.bind(controller));
+  app.post('/jobs/import-itau-boletos/run', { preHandler: canOperate }, controller.runImportItauBoletos.bind(controller));
+  app.post('/jobs/import-itau-boleto-movements/run', { preHandler: canOperate }, controller.runImportItauBoletoMovements.bind(controller));
+  app.post('/jobs/enrich-itau-boleto/run', { preHandler: canOperate }, controller.runEnrichItauBoleto.bind(controller));
+  app.post('/jobs/reconcile-itau-boleto-movements/run', { preHandler: canOperate }, controller.runReconcileItauBoletoMovements.bind(controller));
   app.post('/jobs/reconciliation/run', { preHandler: canOperate }, controller.runReconciliation.bind(controller));
   app.post('/jobs/reprocess-payload/:rawPayloadId', { preHandler: canOperate }, controller.reprocessPayload.bind(controller));
 }

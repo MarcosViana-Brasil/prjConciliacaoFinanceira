@@ -7,7 +7,7 @@ export function Pagination({ pagination, onPageChange }: { pagination?: Paginati
   if (!pagination) return null;
 
   return (
-    <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 border-t border-[var(--app-border)] px-4 py-3 text-sm text-[var(--app-muted)] sm:flex-row sm:items-center sm:justify-between">
       <span>
         Página {pagination.page} de {pagination.totalPages || 1} · {pagination.total} registros
       </span>

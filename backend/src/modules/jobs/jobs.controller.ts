@@ -9,15 +9,23 @@ import {
   jobsListQuerySchema,
   reprocessPayloadBodySchema,
   reprocessPayloadParamsSchema,
+  runEnrichItauBoletoJobSchema,
+  runImportItauBoletoMovementsJobSchema,
+  runImportItauBoletosJobSchema,
   runImportRedeReceivablesJobSchema,
   runImportRedeTransactionsJobSchema,
+  runReconcileItauBoletoMovementsJobSchema,
   runReconciliationJobSchema,
   type JobIdParams,
   type JobsListQuery,
   type ReprocessPayloadBody,
   type ReprocessPayloadParams,
+  type RunEnrichItauBoletoJobBody,
+  type RunImportItauBoletoMovementsJobBody,
+  type RunImportItauBoletosJobBody,
   type RunImportRedeReceivablesJobBody,
   type RunImportRedeTransactionsJobBody,
+  type RunReconcileItauBoletoMovementsJobBody,
   type RunReconciliationJobBody
 } from './jobs.schemas.js';
 import { jobsService } from './jobs.service.js';
@@ -62,6 +70,58 @@ export class JobsController {
     });
 
     return reply.status(202).send(success(result, 'Job de importacao de recebiveis Rede executado'));
+  }
+
+  async runImportItauBoletos(request: FastifyRequest, reply: FastifyReply) {
+    const { body } = validateRequest<unknown, unknown, RunImportItauBoletosJobBody>(request, { body: runImportItauBoletosJobSchema });
+    const result = await runJob({
+      jobName: JOB_NAMES.importItauBoletos,
+      payload: body,
+      handler: jobRegistry[JOB_NAMES.importItauBoletos],
+      triggeredBy: getRequestContext(request).userName,
+      origin: 'api'
+    });
+
+    return reply.status(202).send(success(result, 'Job de importacao de boletos Itau executado'));
+  }
+
+  async runImportItauBoletoMovements(request: FastifyRequest, reply: FastifyReply) {
+    const { body } = validateRequest<unknown, unknown, RunImportItauBoletoMovementsJobBody>(request, { body: runImportItauBoletoMovementsJobSchema });
+    const result = await runJob({
+      jobName: JOB_NAMES.importItauBoletoMovements,
+      payload: body,
+      handler: jobRegistry[JOB_NAMES.importItauBoletoMovements],
+      triggeredBy: getRequestContext(request).userName,
+      origin: 'api'
+    });
+
+    return reply.status(202).send(success(result, 'Job de importacao do extrato de boletos Itau executado'));
+  }
+
+  async runEnrichItauBoleto(request: FastifyRequest, reply: FastifyReply) {
+    const { body } = validateRequest<unknown, unknown, RunEnrichItauBoletoJobBody>(request, { body: runEnrichItauBoletoJobSchema });
+    const result = await runJob({
+      jobName: JOB_NAMES.enrichItauBoleto,
+      payload: body,
+      handler: jobRegistry[JOB_NAMES.enrichItauBoleto],
+      triggeredBy: getRequestContext(request).userName,
+      origin: 'api'
+    });
+
+    return reply.status(202).send(success(result, 'Job de detalhe de boleto Itau executado'));
+  }
+
+  async runReconcileItauBoletoMovements(request: FastifyRequest, reply: FastifyReply) {
+    const { body } = validateRequest<unknown, unknown, RunReconcileItauBoletoMovementsJobBody>(request, { body: runReconcileItauBoletoMovementsJobSchema });
+    const result = await runJob({
+      jobName: JOB_NAMES.reconcileItauBoletoMovements,
+      payload: body,
+      handler: jobRegistry[JOB_NAMES.reconcileItauBoletoMovements],
+      triggeredBy: getRequestContext(request).userName,
+      origin: 'api'
+    });
+
+    return reply.status(202).send(success(result, 'Job de conciliacao de boletos Itau executado'));
   }
 
   async runReconciliation(request: FastifyRequest, reply: FastifyReply) {

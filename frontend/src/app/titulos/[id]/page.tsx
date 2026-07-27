@@ -47,7 +47,7 @@ function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-xs font-medium uppercase text-slate-500">{label}</dt>
-      <dd className="mt-1 font-medium text-slate-900">{value}</dd>
+      <dd className="mt-1 font-medium text-[var(--app-text)]">{value}</dd>
     </div>
   );
 }
